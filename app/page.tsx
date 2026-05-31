@@ -1,8 +1,19 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, Copy, ShieldCheck, CheckCircle2, RotateCcw, Video, Compass, Key, Layers, ClipboardCopy, Image as ImageIcon, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Sparkles, Copy, ShieldCheck, CheckCircle2, RotateCcw, Video, Compass, Key, Layers, ClipboardCopy, Image as ImageIcon, Trash2, Eye, EyeOff, Lock, Rocket } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// ==========================================
+// DATA LISENSI USER AKSES (MANUAL HARDCODED)
+// ==========================================
+// Silakan tambah, hapus, atau ganti daftar email & password temen lo di sini bray!
+const ALLOWED_USERS = [
+  { email: "agunk@desain.com", password: "anti-reject-2026" },
+  { email: "sukses@agunkdesain.com", password: "agunkdesain" },
+  { email: "temen1@gmail.com", password: "suksesbareng1" },
+  { email: "temen2@gmail.com", password: "banjirdollar2" }
+];
 
 const STYLES_DATA = {
   Vector: [
@@ -73,6 +84,14 @@ const LIGHTING_LIST = [
 ];
 
 export default function Home() {
+  // --- STATE OTENTIKASI LISENSI GERBANG DIMENSI ---
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isLaunching, setIsLaunching] = useState(false); 
+  const [inputEmail, setInputEmail] = useState("");
+  const [inputPassword, setInputPassword] = useState("");
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  // --- SISA STATE ASLI BAWAAN APLIKASI LO ---
   const [rawPrompt, setRawPrompt] = useState('');
   const [category, setCategory] = useState<'Vector' | 'PNG' | 'Video'>('Vector');
   const [styleType, setStyleType] = useState(STYLES_DATA.Vector[0]);
@@ -92,11 +111,32 @@ export default function Home() {
   const [outputPrompts, setOutputPrompts] = useState<string[] | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   
-  // --- SISIPKAN DUA BLOK INI DI BAWAHNYA BRAY ---
+  // LOGIKA BARU: Gak ngunci total lagi, tapi auto-fill kunci pas di-refresh bray!
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
     setIsMounted(true);
+    
+    // Hapus sisa gembok permanen kemarin biar browser lo gak bingung bray
+    localStorage.removeItem('agunkdesain_unlocked');
+    
+    // Ambil email & password yang pernah sukses dimasukkan sebelumnya
+    const savedEmail = localStorage.getItem('agunkdesain_saved_email');
+    const savedPassword = localStorage.getItem('agunkdesain_saved_password');
+    
+    if (savedEmail) setInputEmail(savedEmail);
+    if (savedPassword) setInputPassword(savedPassword);
   }, []);
+
+  // AUTOMATIC TIMEOUT TIMELINE UNTUK SEQUENCE MELUNCUR BRAY
+  useEffect(() => {
+    if (isLaunching) {
+      const timer = setTimeout(() => {
+        setIsUnlocked(true);
+        setIsLaunching(false);
+      }, 3800); 
+      return () => clearTimeout(timer);
+    }
+  }, [isLaunching]);
 
   // ENGINE TYPEWRITER BERURUTAN (Anti-Patung)
   const [typedTitle, setTypedTitle] = useState('');
@@ -131,10 +171,10 @@ export default function Home() {
           radius: Math.random() * 15 + 8,
           alpha: 1,
           color: Math.random() > 0.6 
-            ? 'rgba(99, 102, 241, '   // Indigo
+            ? 'rgba(99, 102, 241, '   
             : Math.random() > 0.3 
-              ? 'rgba(168, 85, 247, ' // Purple
-              : 'rgba(236, 72, 153, '  // Pink
+              ? 'rgba(168, 85, 247, ' 
+              : 'rgba(236, 72, 153, '  
         });
       }
     };
@@ -181,7 +221,7 @@ export default function Home() {
 
   // ROBOT TYPEWRITER PADA MOTIVASI KANVAS
   useEffect(() => {
-    if (outputPrompts || loading) return;
+    if (outputPrompts || loading || !isUnlocked) return;
     setTypedTitle('');
     setTypedText('');
     
@@ -202,7 +242,7 @@ export default function Home() {
     }, 14);
     
     return () => clearInterval(interval);
-  }, [outputPrompts, loading]);
+  }, [outputPrompts, loading, isUnlocked]);
 
   useEffect(() => {
     setStyleType(STYLES_DATA[category][0]);
@@ -249,7 +289,6 @@ export default function Home() {
     setTimeout(() => setCopiedAll(false), 2000);
   };
 
-  // KONSEP 6: FUNGSI RESET KANVAS KOSONG MELOMPONG
   const handleResetCanvas = () => {
     setOutputPrompts(null);
   };
@@ -294,13 +333,153 @@ export default function Home() {
     }
   };
 
+  // --- LOGIKA VALIDASI CHECK EMAIL & PASSWORD ---
+  const handleVerifyLicense = () => {
+    setLoginError(null);
+    const foundUser = ALLOWED_USERS.find(
+      (user) => user.email.toLowerCase().trim() === inputEmail.toLowerCase().trim() && user.password === inputPassword
+    );
+
+    if (foundUser) {
+      // Simpan datanya aja bray, jangan status bukanya. Biar pas di-refresh tetep muncul form depan tapi auto-fill!
+      localStorage.setItem('agunkdesain_saved_email', inputEmail.trim());
+      localStorage.setItem('agunkdesain_saved_password', inputPassword);
+      setIsLaunching(true); 
+    } else {
+      setLoginError("Akses Ditolak! Cek lagi kombinasi email atau password lo bray.");
+    }
+  };
+
+  // --- RENDERING INTERFACE 1: POPUP GERBANG DIMENSI (BELUM UNLOCKED & BELUM MELUNCUR) ---
+  if (isMounted && !isUnlocked && !isLaunching) {
+    return (
+      <main className="relative min-h-screen flex items-center justify-center bg-[#0B0F19] text-slate-100 p-4 overflow-hidden">
+        <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0 opacity-70" />
+        
+        <motion.div 
+          initial={{ scale: 0.95, opacity: 0 }} 
+          animate={{ scale: 1, opacity: 1 }} 
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="dark-glass p-8 rounded-3xl border border-white/10 w-full max-w-md text-center backdrop-blur-2xl z-10 shadow-2xl flex flex-col items-center justify-center"
+        >
+          <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500 bg-clip-text text-transparent leading-tight select-none">
+            Selamat datang di dunia Microstock
+          </h1>
+          
+          <p className="text-xs text-slate-400 mt-3 leading-relaxed max-w-sm select-none font-medium">
+            sebelum lo kebanjiran dollar di dunia microstock, kenalan dulu dan biar kita sukses bareng
+          </p>
+
+          <div className="w-12 h-12 bg-indigo-500/10 rounded-full flex items-center justify-center border border-indigo-500/20 text-indigo-400 my-5">
+            <Lock className="w-5 h-5" />
+          </div>
+
+          <p className="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-3 select-none">
+            buka kunci gerbang dimensi microstock lo disini :
+          </p>
+
+          <div className="flex flex-col gap-3 w-full max-w-xs text-left mb-2">
+            <input 
+              type="email" 
+              placeholder="Masukkan Email Akses..." 
+              value={inputEmail}
+              onChange={(e) => setInputEmail(e.target.value)}
+              className="w-full bg-slate-950/80 p-3 rounded-xl border border-white/5 focus:border-indigo-500 focus:outline-none text-xs text-slate-200 transition-all font-mono"
+            />
+            <input 
+              type="password" 
+              placeholder="Masukkan Password..." 
+              value={inputPassword}
+              onChange={(e) => setInputPassword(e.target.value)}
+              onKeyDown={(e) => { if(e.key === 'Enter') handleVerifyLicense(); }}
+              className="w-full bg-slate-950/80 p-3 rounded-xl border border-white/5 focus:border-indigo-500 focus:outline-none text-xs text-slate-200 transition-all font-mono"
+            />
+          </div>
+
+          {loginError && (
+            <div className="w-full max-w-xs mt-2 p-2.5 bg-red-500/10 border border-red-500/20 text-red-400 text-[11px] rounded-xl font-medium">
+              ⚠️ {loginError}
+            </div>
+          )}
+
+          <motion.button 
+            whileHover={{ scale: 1.02, boxShadow: "0px 0px 25px rgba(99, 102, 241, 0.4)" }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleVerifyLicense}
+            className="w-full max-w-xs mt-4 py-3 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white text-xs font-extrabold rounded-xl uppercase tracking-wider shadow-lg transition-all cursor-pointer"
+          >
+            Buka Gerbang Dimensi
+          </motion.button>
+
+          <div className="mt-8 pt-4 border-t border-white/5 text-[10px] text-slate-500 flex flex-col gap-0.5 font-mono select-none w-full">
+            <p>Copyright @agunkdesain 2026</p>
+            <p className="text-indigo-400/70 italic">Temen lo sukses bareng ..</p>
+          </div>
+        </motion.div>
+      </main>
+    );
+  }
+
+  // --- STATE INTERFACE 2: THE GERBANG DRAMATISASI BIOSKOP (ROKET KUCING ASTRONOT LAUNCHING) ---
+  if (isMounted && isLaunching) {
+    return (
+      <main className="relative min-h-screen flex flex-col items-center justify-center bg-[#070A13] text-slate-100 p-4 overflow-hidden z-50">
+        <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0 opacity-40" />
+
+        <motion.h1 
+          animate={{ 
+            scale: [1, 1.08, 1, 1.1, 1],
+            x: [0, -1, 1, -2, 2, 0],
+            filter: ["drop-shadow(0 0 8px rgba(245,158,11,0.3))", "drop-shadow(0 0 25px rgba(236,72,153,0.8))", "drop-shadow(0 0 8px rgba(245,158,11,0.3))"]
+          }} 
+          transition={{ duration: 0.12, repeat: Infinity }} 
+          className="text-4xl md:text-6xl font-black uppercase tracking-widest bg-gradient-to-r from-yellow-400 via-pink-500 to-indigo-400 bg-clip-text text-transparent mb-16 font-mono select-none"
+        >
+          Meluncur Bro .... !!!
+        </motion.h1>
+
+        <motion.div
+          animate={{
+            y: [260, 256, 262, 250, 140, 40, -1200],
+            x: [0, -3, 3, -4, 4, -2, 2, -1, 1, 0, 0],
+            rotate: [0, -1, 1, -2, 2, -1, 0, 0, 0],
+            scale: [1, 1.02, 1.01, 1.06, 1.15, 1.25, 2.0]
+          }}
+          transition={{
+            duration: 3.8,
+            times: [0, 0.05, 0.1, 0.18, 0.35, 0.55, 0.85, 1],
+            ease: "easeInOut"
+          }}
+          className="relative flex flex-col items-center"
+        >
+          <div className="absolute top-[-20px] z-20 bg-slate-900/90 rounded-full p-2 border-2 border-slate-400 shadow-[0_0_20px_rgba(255,255,255,0.5)] flex items-center justify-center w-14 h-14 backdrop-blur-md animate-pulse">
+            <span className="text-3xl select-none">🐱‍🚀</span>
+          </div>
+
+          <Rocket className="w-32 h-32 text-indigo-400 drop-shadow-[0_0_40px_rgba(99,102,241,0.7)] transform -rotate-45 relative z-10" />
+
+          <motion.div 
+            animate={{ scaleY: [1, 1.4, 1.1, 1.6, 1.2], opacity: [0.8, 1, 0.9, 1, 0.8] }}
+            transition={{ duration: 0.1, repeat: Infinity, repeatType: "reverse" }}
+            className="w-8 h-28 bg-gradient-to-b from-orange-500 via-yellow-400 to-transparent rounded-b-full origin-top blur-[1px] mt-[-15px] z-0 shadow-[0_10px_30px_rgba(249,115,22,0.5)]"
+          />
+          
+          <div className="flex gap-1.5 justify-center mt-[-10px] opacity-80">
+            <div className="w-5 h-5 bg-red-600/70 rounded-full blur-md animate-ping" />
+            <div className="w-7 h-7 bg-orange-500/60 rounded-full blur-lg animate-pulse delay-75" />
+            <div className="w-5 h-5 bg-yellow-300/80 rounded-full blur-md animate-ping delay-100" />
+          </div>
+        </motion.div>
+      </main>
+    );
+  }
+
+  // --- STATE INTERFACE 3: UTAMA APLIKASI ASLI (AKAN TERBUKA JIKA ROKET KELAR MELUNCUR) ---
   return (
     <main className="relative min-h-screen p-4 md:p-6 flex flex-col items-center justify-start z-10 overflow-x-hidden bg-[#0B0F19] text-slate-100 selection:bg-indigo-500/30">
       
-      {/* KANVAS GAIB PARTIKEL AIR AURORA (MELAYANG BACKDROP) */}
       <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0 opacity-80" />
 
-      {/* BACKGROUND GLOW INTERAKTIF (Floating Mesh Glow Drifting Nyata) */}
       <motion.div 
         animate={{ x: [0, 80, -80, 0], y: [0, -60, 60, 0] }}
         transition={{ duration: 15, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
@@ -324,7 +503,6 @@ export default function Home() {
           </p>
         </div>
         
-        {/* Logo Solo dengan Interaksi Kursor Micro */}
         <motion.img 
           whileHover={{ scale: 1.08, rotate: 3 }}
           whileTap={{ scale: 0.95 }}
@@ -596,7 +774,7 @@ export default function Home() {
         {/* PANEL OUTPUT KANVAS KANAN */}
         <div className="md:col-span-7">
           <AnimatePresence mode="wait">
-            {/* KONSEP 5: STATE LOADING KANVAS DENGAN PESAN KHUSUS */}
+            {/* STATE LOADING KANVAS DENGAN PESAN KHUSUS */}
             {loading ? (
               <motion.div
                 key="loading-canvas"
@@ -636,7 +814,7 @@ export default function Home() {
                     >
                       <ClipboardCopy className="w-3.5 h-3.5" /> {copiedAll ? 'Disalin!' : 'Salin Semua'}
                     </motion.button>
-                    {/* KONSEP 6: TOMBOL RESET KANVAS KOSONG MELOMPONG */}
+                    {/* TOMBOL RESET KANVAS KOSONG MELOMPONG */}
                     <motion.button
                       whileHover={{ scale: 1.04 }}
                       whileTap={{ scale: 0.96 }}
@@ -650,7 +828,7 @@ export default function Home() {
 
                 <div className="flex flex-col gap-3 overflow-y-auto pr-1 select-text custom-scrollbar">
                   {outputPrompts.map((promptText, idx) => (
-                    <div key={idx} className="group relative p-3.5 bg-slate-950/70 rounded-xl border border-white/5 hover:border-indigo-500/30 transition-all flex flex-col gap-2 relative">
+                    <div key={idx} className="group relative p-3.5 bg-slate-950/70 rounded-xl border border-white/5 hover:border-indigo-500/30 transition-all flex flex-col gap-2">
                       <div className="flex justify-between items-center z-10 relative">
                         <span className="text-[10px] text-indigo-400 font-black font-mono">#VARIASI {idx + 1}</span>
                         <button
@@ -680,7 +858,7 @@ export default function Home() {
                   <Sparkles className="w-6 h-6" />
                 </div>
                 
-                {/* MEGA-FIX: JUDUL SEKARANG IKUT NGETIK BERJALAN BRAY (Anti-Patung) */}
+                {/* JUDUL SEKARANG IKUT NGETIK BERJALAN BRAY (Anti-Patung) */}
                 <motion.h3 
                   className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500 uppercase tracking-tighter mb-4 select-none filter drop-shadow-[0_15px_15px_rgba(168,85,247,0.25)] min-h-[50px] font-mono"
                 >
@@ -709,7 +887,7 @@ export default function Home() {
       </div>
 
       {/* FOOTER PREMIUM PERSONAL BRAND */}
-      <footer className="w-full max-w-6xl mt-12 pt-6 border-t border-slate-900/60 text-center flex flex-col gap-1 z-10">
+      <footer className="w-full max-w-6xl mt-12 pt-6 border-t border-slate-900/60 text-center flex flex-col gap-1 z-10 select-none">
         <p className="text-xs font-bold text-slate-500 font-mono tracking-wider">
           Copyright © agunkdesain 2026
         </p>
