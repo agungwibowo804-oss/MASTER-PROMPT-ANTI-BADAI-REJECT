@@ -353,7 +353,7 @@ export default function Home() {
 
     try {
       // 1. Ambil data dari tabel Supabase berdasarkan Kunci yang diketik bray
-      const targetUrl = `${SUPABASE_URL}/rest/v1/licenses?email=eq.${encodeURIComponent(inputEmail.trim())}&password=eq.${encodeURIComponent(inputPassword)}`;
+      const targetUrl = `${SUPABASE_URL}/rest/v1/subscribers?email=eq.${encodeURIComponent(inputEmail.trim())}&password=eq.${encodeURIComponent(inputPassword)}`;
       const response = await fetch(targetUrl, {
         method: 'GET',
         headers: {
@@ -375,7 +375,7 @@ export default function Home() {
       // 2. DETEKTIF SENSOR: Proteksi 1 PC 1 Lisensi
       if (!dbUser.device_id) {
         // JIKA KOSONG (FIRST LOGIN): Kunci ID PC laptop ini secara permanen ke Supabase
-        const updateUrl = `${SUPABASE_URL}/rest/v1/licenses?email=eq.${encodeURIComponent(dbUser.email)}`;
+        const updateUrl = `${SUPABASE_URL}/rest/v1/subscribers?email=eq.${encodeURIComponent(dbUser.email)}`;
         const lockResponse = await fetch(updateUrl, {
           method: 'PATCH',
           headers: {
