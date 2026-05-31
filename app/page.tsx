@@ -372,9 +372,9 @@ export default function Home() {
 
       const dbUser = data[0];
 
-      // 2. DETEKTIF SENSOR: Proteksi 1 PC 1 Lisensi
-      if (!dbUser.device_id) {
-        // JIKA KOSONG (FIRST LOGIN): Kunci ID PC laptop ini secara permanen ke Supabase
+      // 2. DETEKTIF SENSOR: Proteksi 1 PC 1 Lisensi khusus Aplikasi Prompt bray
+      if (!dbUser.device_id_prompt) {
+        // JIKA KOSONG (FIRST LOGIN PROMPT): Kunci ID PC laptop ini khusus buat prompt
         const updateUrl = `${SUPABASE_URL}/rest/v1/subscribers?email=eq.${encodeURIComponent(dbUser.email)}`;
         const lockResponse = await fetch(updateUrl, {
           method: 'PATCH',
@@ -384,7 +384,7 @@ export default function Home() {
             'Content-Type': 'application/json',
             'Prefer': 'return=minimal'
           },
-          body: JSON.stringify({ device_id: localDeviceUuid })
+          body: JSON.stringify({ device_id_prompt: localDeviceUuid })
         });
 
         if (!lockResponse.ok) {
@@ -398,13 +398,13 @@ export default function Home() {
         setIsLaunching(true);
 
       } else {
-        // JIKA SUDAH BERISI: Validasi kecocokan ID hardware PC saat ini
-        if (dbUser.device_id === localDeviceUuid) {
+        // JIKA SUDAH BERISI: Validasi apakah ID laptop prompt saat ini cocok
+        if (dbUser.device_id_prompt === localDeviceUuid) {
           localStorage.setItem('agunkdesain_saved_email', inputEmail.trim());
           localStorage.setItem('agunkdesain_saved_password', inputPassword);
           setIsLaunching(true);
         } else {
-          // GAGAL: Berarti akun ini dicoba di-share ke PC lain! Blokir bray!
+          // GAGAL: Akun prompt dichat/share ke PC lain bray! Blokir!
           setLoginError("🚫 Akses Ditolak! Lisensi ini udah kekunci di PC lain bray. Hubungi Agunk Desain buat reset!");
         }
       }
