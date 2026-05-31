@@ -4,16 +4,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, Copy, ShieldCheck, CheckCircle2, RotateCcw, Video, Compass, Key, Layers, ClipboardCopy, Image as ImageIcon, Trash2, Eye, EyeOff, Lock, Rocket } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// ==========================================
-// DATA LISENSI USER AKSES (MANUAL HARDCODED)
-// ==========================================
-// Silakan tambah, hapus, atau ganti daftar email & password temen lo di sini bray!
-const ALLOWED_USERS = [
-  { email: "agunk@desain.com", password: "anti-reject-2026" },
-  { email: "sukses@agunkdesain.com", password: "agunkdesain" },
-  { email: "temen1@gmail.com", password: "suksesbareng1" },
-  { email: "temen2@gmail.com", password: "banjirdollar2" }
-];
+// ==========================================================
+// KONEKSI UTAMA SUPABASE LIVE DATABASE (AUTOPILOT LICENSE)
+// ==========================================================
+// Kunci URL sudah otomatis mengarah ke Project ID Supabase milik lo bray!
+const SUPABASE_URL = "https://ckmhdeuhzsuzdgumgyim.supabase.co";
+// Tinggal tempel public anon key lo di bawah ini pas di VS Code ya:
+const SUPABASE_ANON_KEY = "sb_publishable_RNj6VVsnoOiKghqyp-U-ew_HzlOg9ke";
 
 const STYLES_DATA = {
   Vector: [
@@ -84,12 +81,13 @@ const LIGHTING_LIST = [
 ];
 
 export default function Home() {
-  // --- STATE OTENTIKASI LISENSI GERBANG DIMENSI ---
+  // --- STATE OTENTIKASI DATABASE LIVE ---
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false); 
   const [inputEmail, setInputEmail] = useState("");
   const [inputPassword, setInputPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [localDeviceUuid, setLocalDeviceUuid] = useState("");
 
   // --- SISA STATE ASLI BAWAAN APLIKASI LO ---
   const [rawPrompt, setRawPrompt] = useState('');
@@ -111,15 +109,23 @@ export default function Home() {
   const [outputPrompts, setOutputPrompts] = useState<string[] | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   
-  // LOGIKA BARU: Gak ngunci total lagi, tapi auto-fill kunci pas di-refresh bray!
+  // LOGIKA DEVICE FINGERPRINT LOCK + AUTO-FILL CACHE ON REFRESH
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
     setIsMounted(true);
     
-    // Hapus sisa gembok permanen kemarin biar browser lo gak bingung bray
+    // Hapus sisa gembok lama biar browser lo gak bingung bray
     localStorage.removeItem('agunkdesain_unlocked');
     
-    // Ambil email & password yang pernah sukses dimasukkan sebelumnya
+    // 1. Ambil atau buat ID Unik untuk PC/Laptop ini (Device Fingerprinting)
+    let deviceUuid = localStorage.getItem('agunkdesain_hardware_id');
+    if (!deviceUuid) {
+      deviceUuid = 'device_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('agunkdesain_hardware_id', deviceUuid);
+    }
+    setLocalDeviceUuid(deviceUuid);
+    
+    // 2. Ambil cache input email password pas refresh biar nempel terus bray
     const savedEmail = localStorage.getItem('agunkdesain_saved_email');
     const savedPassword = localStorage.getItem('agunkdesain_saved_password');
     
@@ -333,20 +339,80 @@ export default function Home() {
     }
   };
 
-  // --- LOGIKA VALIDASI CHECK EMAIL & PASSWORD ---
-  const handleVerifyLicense = () => {
+  // ======================================================================
+  // LOGIKA VALIDASI LIVE DATABASE VIA NATIVE REST SUPABASE API (DEVICE LOCK)
+  // ======================================================================
+  const handleVerifyLicense = async () => {
+    if (!inputEmail.trim() || !inputPassword.trim()) {
+      setLoginError("Email ama Password-nya diisi lengkap dulu bray!");
+      return;
+    }
+    
     setLoginError(null);
-    const foundUser = ALLOWED_USERS.find(
-      (user) => user.email.toLowerCase().trim() === inputEmail.toLowerCase().trim() && user.password === inputPassword
-    );
+    setLoading(true);
 
-    if (foundUser) {
-      // Simpan datanya aja bray, jangan status bukanya. Biar pas di-refresh tetep muncul form depan tapi auto-fill!
-      localStorage.setItem('agunkdesain_saved_email', inputEmail.trim());
-      localStorage.setItem('agunkdesain_saved_password', inputPassword);
-      setIsLaunching(true); 
-    } else {
-      setLoginError("Akses Ditolak! Cek lagi kombinasi email atau password lo bray.");
+    try {
+      // 1. Ambil data dari tabel Supabase berdasarkan Kunci yang diketik bray
+      const targetUrl = `${SUPABASE_URL}/rest/v1/licenses?email=eq.${encodeURIComponent(inputEmail.trim())}&password=eq.${encodeURIComponent(inputPassword)}`;
+      const response = await fetch(targetUrl, {
+        method: 'GET',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data || data.length === 0) {
+        setLoginError("Gerbang Dimensi Menolak! Kombinasi Email atau Password lo salah bray.");
+        setLoading(false);
+        return;
+      }
+
+      const dbUser = data[0];
+
+      // 2. DETEKTIF SENSOR: Proteksi 1 PC 1 Lisensi
+      if (!dbUser.device_id) {
+        // JIKA KOSONG (FIRST LOGIN): Kunci ID PC laptop ini secara permanen ke Supabase
+        const updateUrl = `${SUPABASE_URL}/rest/v1/licenses?email=eq.${encodeURIComponent(dbUser.email)}`;
+        const lockResponse = await fetch(updateUrl, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ device_id: localDeviceUuid })
+        });
+
+        if (!lockResponse.ok) {
+          setLoginError("Gagal mengunci hardware lisensi lo bray, coba hubungi admin.");
+          setLoading(false);
+          return;
+        }
+        
+        localStorage.setItem('agunkdesain_saved_email', inputEmail.trim());
+        localStorage.setItem('agunkdesain_saved_password', inputPassword);
+        setIsLaunching(true);
+
+      } else {
+        // JIKA SUDAH BERISI: Validasi kecocokan ID hardware PC saat ini
+        if (dbUser.device_id === localDeviceUuid) {
+          localStorage.setItem('agunkdesain_saved_email', inputEmail.trim());
+          localStorage.setItem('agunkdesain_saved_password', inputPassword);
+          setIsLaunching(true);
+        } else {
+          // GAGAL: Berarti akun ini dicoba di-share ke PC lain! Blokir bray!
+          setLoginError("🚫 Akses Ditolak! Lisensi ini udah kekunci di PC lain bray. Hubungi Agunk Desain buat reset!");
+        }
+      }
+
+    } catch (err) {
+      setLoginError("Gagal terhubung ke server database gembok online bray.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -383,6 +449,7 @@ export default function Home() {
               type="email" 
               placeholder="Masukkan Email Akses..." 
               value={inputEmail}
+              disabled={loading}
               onChange={(e) => setInputEmail(e.target.value)}
               className="w-full bg-slate-950/80 p-3 rounded-xl border border-white/5 focus:border-indigo-500 focus:outline-none text-xs text-slate-200 transition-all font-mono"
             />
@@ -390,6 +457,7 @@ export default function Home() {
               type="password" 
               placeholder="Masukkan Password..." 
               value={inputPassword}
+              disabled={loading}
               onChange={(e) => setInputPassword(e.target.value)}
               onKeyDown={(e) => { if(e.key === 'Enter') handleVerifyLicense(); }}
               className="w-full bg-slate-950/80 p-3 rounded-xl border border-white/5 focus:border-indigo-500 focus:outline-none text-xs text-slate-200 transition-all font-mono"
@@ -406,9 +474,10 @@ export default function Home() {
             whileHover={{ scale: 1.02, boxShadow: "0px 0px 25px rgba(99, 102, 241, 0.4)" }}
             whileTap={{ scale: 0.98 }}
             onClick={handleVerifyLicense}
-            className="w-full max-w-xs mt-4 py-3 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white text-xs font-extrabold rounded-xl uppercase tracking-wider shadow-lg transition-all cursor-pointer"
+            disabled={loading}
+            className="w-full max-w-xs mt-4 py-3 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white text-xs font-extrabold rounded-xl uppercase tracking-wider shadow-lg transition-all cursor-pointer disabled:opacity-40"
           >
-            Buka Gerbang Dimensi
+            {loading ? "Menghubungi Database..." : "Buka Gerbang Dimensi"}
           </motion.button>
 
           <div className="mt-8 pt-4 border-t border-white/5 text-[10px] text-slate-500 flex flex-col gap-0.5 font-mono select-none w-full">
