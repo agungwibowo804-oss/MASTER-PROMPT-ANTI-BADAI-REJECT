@@ -178,7 +178,7 @@ export async function POST(request: Request) {
 
           const finalizedPrompts = rawPromptsArray.map((p: string) => {
             let finalP = p;
-            if (category === 'Vector') finalP += `, professional vector asset, vector illustration, ${backgroundPrompt}, clean geometric lines, smooth gradients, commercial digital art, marketplace ready`;
+            if (category === 'Vector') finalP += `, professional vector asset, vector illustration, ${backgroundPrompt}, clean geometric lines, no gradients, flat solid colors, commercial digital art, marketplace ready`;
             else if (category === 'PNG') finalP += `, blank commercial asset template, pristine isolated element, ${backgroundPrompt}, perfectly formed edges, uniform lighting, ready for mockup placement`;
             else if (category === 'Video') finalP += `, 4k high definition footage, ultra-clear resolution, smooth frame delivery, ${backgroundPrompt}, high production value stock video`;
             return finalP;
